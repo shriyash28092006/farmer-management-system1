@@ -479,7 +479,7 @@ Farmer Management System | BCA Project
 
 <script>
 
-let farmers =
+rmers =
 JSON.parse(localStorage.getItem("farmers")) || [];
 
 let crops =
@@ -509,60 +509,82 @@ if(page === "dashboard"){
 }
 
 
-/* ADD FARMER */
+/* ADD FARMER - SUPABASE */
 
-function addFarmer(){
+async function addFarmer() {
 
-let name =
-document.getElementById("farmerName").value.trim();
+    let name = document.getElementById("farmerName").value.trim();
+    let village = document.getElementById("village").value.trim();
+    let mobile = document.getElementById("mobile").value.trim();
+    let land = document.getElementById("land").value;
 
-let village =
-document.getElementById("village").value.trim();
+    if (name === "" || village === "" ||
+        mobile === "" || land === "") {
 
-let mobile =
-document.getElementById("mobile").value.trim();
+        alert("Please fill all details");
+        return;
+    }
 
-let land =
-document.getElementById("land").value;
+    try {
 
+        // Get logged-in farmer
+        const { data: sessionData, error: sessionError } =
+            await supabaseClient.auth.getSession();
 
-if(name=="" || village=="" || mobile=="" || land==""){
+        if (sessionError) throw sessionError;
 
-alert("Please fill all details");
+        const user = sessionData.session?.user;
 
-return;
+        if (!user) {
+            alert("Please login first!");
+            return;
+        }
 
-}
+        // Save farmer details to Supabase
+        const { data, error } = await supabaseClient
+            .from("farmers")
+            .insert([{
+                user_id: user.id,
+                name: name,
+                village: village,
+                mobile: mobile,
+                land_area: Number(land)
+            }])
+            .select();
 
+        if (error) throw error;
 
-farmers.push({
+        // Update local display
+        farmers.push({
+            id: data[0].id,
+            user_id: user.id,
+            name: name,
+            village: village,
+            mobile: mobile,
+            land: land
+        });
 
-name:name,
-village:village,
-mobile:mobile,
-land:land
+        localStorage.setItem(
+            "farmers",
+            JSON.stringify(farmers)
+        );
 
-});
+        document.getElementlet faById("farmerName").value = "";
+        document.getElementById("village").value = "";
+        document.getElementById("mobile").value = "";
+        document.getElementById("land").value = "";
 
+        displayFarmers();
+        updateDashboard();
 
-localStorage.setItem(
-"farmers",
-JSON.stringify(farmers)
-);
+        alert("Farmer added successfully!");
 
+    } catch (error) {
 
-document.getElementById("farmerName").value="";
-document.getElementById("village").value="";
-document.getElementById("mobile").value="";
-document.getElementById("land").value="";
+        console.error("Farmer Save Error:", error);
+        alert("Farmer save failed: " + error.message);
 
-
-displayFarmers();
-
-updateDashboard();
-
-alert("Farmer added successfully!");
-
+    }
 }
 
 
@@ -636,42 +658,6 @@ updateDashboard();
 
 function addCrop(){
 
-let farmer =
-document.getElementById("cropFarmer").value.trim();
-
-let name =
-document.getElementById("cropName").value.trim();
-
-let date =
-document.getElementById("cropDate").value;
-
-let production =
-document.getElementById("production").value;
-
-let price =
-document.getElementById("price").value;
-
-
-if(farmer=="" ||
-name=="" ||
-date=="" ||
-production=="" ||
-price==""){
-
-alert("Please fill all details");
-
-return;
-
-}
-
-
-crops.push({
-
-farmer:farmer,
-name:name,
-date:date,
-production:Number(production),
-price:Number(price)
 
 });
 
@@ -768,7 +754,7 @@ updateDashboard();
 
 /* PROFIT CALCULATOR */
 
-function calculateProfit(){
+async function calculateProfit(){
 
 let farmer =
 document.getElementById("profitFarmer").value.trim();
@@ -812,6 +798,58 @@ seed + fertilizer + medicine + labour;
 
 let profit =
 selling - expense;
+try {
+
+    // Current logged-in user
+    const { data: sessionData, error: sessionError } =
+        await supabaseClient.auth.getSession();
+
+    if (sessionError) {
+        throw sessionError;
+    }
+
+    const user = sessionData.session?.user;
+
+    if (!user) {
+        alert("Please login first!");
+        return;
+    }
+
+    // Save profit calculation to Supabase
+    const { data, error } = await supabaseClient
+        .from("profit_records")
+        .insert([{
+            user_id: user.id,
+            farmer_name: farmer,
+            selling_amount: selling,
+            seed_cost: seed,
+            fertilizer_cost: fertilizer,
+            medicine_cost: medicine,
+            labour_cost: labour,
+            total_expense: expense,
+            profit: profit
+        }])
+        .select();
+
+    if (error) {
+        throw error;
+    }
+
+    alert(
+        "Profit Saved Successfully!\n\n" +
+        "Farmer: " + farmer +
+        "\nIncome: ₹" + selling +
+        "\nExpenses: ₹" + expense +
+        "\nProfit: ₹" + profit
+    );
+
+} catch (error) {
+
+    console.error("Profit Save Error:", error);
+
+    alert("Profit save failed: " + error.message);
+
+}
 
 
 /* SHOW RESULT */
@@ -842,6 +880,42 @@ JSON.stringify(profitRecords)
 
 
 updateDashboard();
+let farmer=
+document.getElementById("cropFarmer").value.trim();
+
+let name =
+document.getElementById("cropName").value.trim();
+
+let date =
+document.getElementById("cropDate").value;
+
+let production =
+document.getElementById("production").value;
+
+let price =
+document.getElementById("price").value;
+
+
+if(farmer=="" ||
+name=="" ||
+date=="" ||
+production=="" ||
+price==""){
+
+alert("Please fill all details");
+
+return;
+
+}
+
+
+crops.push({
+
+farmer:farmer,
+name:name,
+date:date,
+production:Number(production),
+price:Number(price)
 
 alert("Profit record saved successfully!");
 
